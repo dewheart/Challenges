@@ -1,8 +1,8 @@
 provider "aws" {
   #  version    = "4.67.0"
   region     = "us-east-1"
-  access_key = "AKIAQ5ZUG7C275TGTLCB"
-  secret_key = "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"
+  access_key = ""
+  secret_key = ""
 }
 
 resource "aws_security_group" "websg" {

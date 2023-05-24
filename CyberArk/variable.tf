@@ -19,13 +19,13 @@ variable "pLinuxKey" {
 variable "VpcIdentity" {
   description = "This is the environment that the application is deployed"
   type        = string
-  default     = "vpc-2b67494f"
+  default     = ""
 }
 
 variable "PublicSubnet" {
   description = "This is the environment that the application is deployed"
   type        = string
-  default     = "subnet-062a5bc3f91024049"
+  default     = ""
 }
 
 variable "InstanceType" {
