@@ -1,6 +1,8 @@
 provider "aws" {
-  version = "4.67.0" 
-  region = "us-east-1"
+  #  version    = "4.67.0"
+  region     = "us-east-1"
+  access_key = "AKIAQ5ZUG7C275TGTLCB"
+  secret_key = "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"
 }
 
 resource "aws_security_group" "websg" {
@@ -9,41 +11,43 @@ resource "aws_security_group" "websg" {
   vpc_id      = var.VpcIdentity
 
   ingress {
-    description      = "TLS from VPC"
-    from_port        = 22
-    to_port          = 22
-    protocol         = "tcp"
-    cidr_blocks      = var.MyIP
+    description = "SSH Traffic From Ade IP"
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = var.MyIP
   }
 
   ingress {
-    description      = "TLS from VPC"
-    from_port        = 80
-    to_port          = 80
-    protocol         = "tcp"
-    cidr_blocks      = var.MyIP
+    description = "HTTP Traffic From Ade IP"
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = var.MyIP
   }
 
   ingress {
-    description      = "TLS from VPC"
-    from_port        = 80
-    to_port          = 80
-    protocol         = "tcp"
-    cidr_blocks      = var.CyberArkVPNIP
+    description = "HTTP Traffic From CyberArk VPN IP"
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = var.CyberArkVPNIP
   }
 
   egress {
-    from_port        = 80
-    to_port          = 80
-    protocol         = "tcp"
-    cidr_blocks      = var.AnyIP
+    description = "HTTP Traffic To Any IP"
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = var.AnyIP
   }
 
   egress {
-    from_port        = 443
-    to_port          = 443
-    protocol         = "tcp"
-    cidr_blocks      = var.AnyIP
+    description = "HTTPS Traffic To Any IP"
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = var.AnyIP
   }
 
   tags = {
@@ -62,7 +66,7 @@ resource "tls_private_key" "EC2Key-Private" {
 }
 
 resource "aws_ssm_parameter" "LinuxKeySSM" {
-  name        = "/EC2Name/LinuxKeySSM"
+  name        = "/${var.EC2Name}/LinuxKeySSM"
   description = "The SSM parameter storing the webserver key pair"
   type        = "SecureString"
   value       = tls_private_key.EC2Key-Private.private_key_pem
@@ -72,19 +76,19 @@ resource "aws_ssm_parameter" "LinuxKeySSM" {
 }
 
 resource "aws_instance" "webserver" {
-  ami           = var.InstanceAMI
-  subnet_id     = var.PublicSubnet
-  instance_type = var.InstanceType
-  key_name = var.pLinuxKey
+  ami                         = var.InstanceAMI
+  subnet_id                   = var.PublicSubnet
+  instance_type               = var.InstanceType
+  key_name                    = aws_key_pair.EC2Key.key_name
   associate_public_ip_address = true
-  vpc_security_group_ids = aws_security_group.websg.id
+  vpc_security_group_ids      = [aws_security_group.websg.id]
   root_block_device {
     volume_size           = var.Volume1
     volume_type           = "gp3"
     delete_on_termination = true
   }
-	user_data = <<EOF
-        #!/bin/bash -xe
+  user_data = <<-EOF
+        #!/bin/bash
         yum update -y
         yum install -y httpd
         systemctl start httpd
@@ -95,9 +99,14 @@ resource "aws_instance" "webserver" {
         echo "$localIp" >> index.html
 	EOF
   tags = {
-    Name = var.EC2Name
+    Name    = var.EC2Name
     EnvName = var.EnvName
   }
+}
+
+output "webserver_public_ip" {
+  description = "This is the public ip of the new web server"
+  value       = aws_instance.webserver.public_ip
 }
 
 
@@ -110,9 +119,7 @@ resource "aws_instance" "webserver" {
 
 
 
-
-
-output "instance_ip"{
-    description = "The public IP address of the instance"
-    value = aws_instance.webserver.public_ip
+output "instance_ip" {
+  description = "The public IP address of the instance"
+  value       = aws_instance.webserver.public_ip
 }
