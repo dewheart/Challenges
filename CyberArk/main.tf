@@ -108,18 +108,3 @@ output "webserver_public_ip" {
   description = "This is the public ip of the new web server"
   value       = aws_instance.webserver.public_ip
 }
-
-
-
-
-
-
-
-
-
-
-
-output "instance_ip" {
-  description = "The public IP address of the instance"
-  value       = aws_instance.webserver.public_ip
-}
