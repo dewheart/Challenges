@@ -52,12 +52,6 @@ variable "MyIP" {
   default     = ["96.241.156.40/32"]
 }
 
-variable "CyberArkVPNIP" {
-  description = "This is the environment that the application is deployed"
-  type        = list(string)
-  default     = ["66.37.42.0/24"]
-}
-
 variable "AnyIP" {
   description = "This is the environment that the application is deployed"
   type        = list(string)

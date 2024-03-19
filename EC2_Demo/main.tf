@@ -26,14 +26,6 @@ resource "aws_security_group" "websg" {
     cidr_blocks = var.MyIP
   }
 
-  ingress {
-    description = "HTTP Traffic From CyberArk VPN IP"
-    from_port   = 80
-    to_port     = 80
-    protocol    = "tcp"
-    cidr_blocks = var.CyberArkVPNIP
-  }
-
   egress {
     description = "HTTP Traffic To Any IP"
     from_port   = 80
