@@ -49,7 +49,7 @@ variable "Volume1" {
 variable "MyIP" {
   description = "This is the environment that the application is deployed"
   type        = list(string)
-  default     = ["96.241.156.40/32"]
+  default     = ["0.0.0.0/32"] #Change 0.0.0.0 to your pc Ip address as needed
 }
 
 variable "AnyIP" {
