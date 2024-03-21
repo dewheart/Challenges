@@ -1,13 +1,14 @@
 locals {
-  name_suffix = "${var.resource_tags["ProgramName"]}-${var.resource_tags["EnvironmentName"]}"
+  account_id  = data.aws_caller_identity.current.account_id
+  default_tag = "${var.ProgramName}-${var.EnvironmentName}"
 }
 
-
 resource "aws_s3_bucket" "patchS3bucket" {
-  bucket = "${local.name_suffix}-${account_id}-patchlogs" 
+  bucket        = "${local.default_tag}-${local.account_id}-patchlogs"
+  force_destroy = false
 
   tags = {
-    Name        = aws_s3_bucket.patchS3bucket.bucket 
+    #    Name        = aws_s3_bucket.patchS3bucket.id
     Environment = var.EnvironmentName
   }
 }
@@ -17,7 +18,7 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "s3BucketKey" {
 
   rule {
     apply_server_side_encryption_by_default {
-      sse_algorithm     = "AES256"
+      sse_algorithm = "AES256"
     }
   }
 }
