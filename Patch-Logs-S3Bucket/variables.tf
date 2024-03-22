@@ -9,9 +9,3 @@ variable "EnvironmentName" {
   type        = string
   default     = "poc"
 }
-
-#    variable "account_id" {
-#      description = "This is the AWS account where the resource will be deployed"
-#      type        = string
-#      default     = "063997147317"
-#    }
