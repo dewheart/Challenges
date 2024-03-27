@@ -30,7 +30,7 @@ data "aws_iam_policy_document" "ssmpatchiam_policy" {
 
     principals {
       type        = "Service"
-      identifiers = ["ec2.amazonaws.com"]
+      identifiers = ["ec2.amazonaws.com", "ssm.amazonaws.com"]
     }
 
     actions = ["sts:AssumeRole"]
