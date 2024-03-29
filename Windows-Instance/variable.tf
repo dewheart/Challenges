@@ -16,6 +16,12 @@ variable "EC2Name" {
   default     = "Websrv1"
 }
 
+variable "OS" {
+  description = "This is the type of operating system in use"
+  type        = string
+  default     = "Windows"
+}
+
 variable "EC2LocalAdmins" {
   description = "This is the local admin account for CIT POC Cloud team members"
   type        = string

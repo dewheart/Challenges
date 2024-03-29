@@ -1,0 +1,100 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+Description: >
+  This template deploys S3 and dynamodb for terraform state and lock file.
+  
+Parameters:
+
+  pProgramName:
+    Type: String
+    Description: Please choose the program you are building your services for.
+    Default: 'cit'
+    AllowedValues:
+      - 'cit'
+
+  pEnvironmentName:
+    Type: String
+    Description: Please choose the environment to build your services.
+    Default: 'poc'
+    AllowedValues:
+      - 'poc'
+      - 'dev'
+
+  pTerraformStateLockTableName:
+    Type: String
+    Description: Please provide the name of terraform lock file table.
+    Default: 'terraform-lock'
+
+  pAccountEmail:
+    Description: Email of the person to contact with question for this account.
+    Type: String
+    Default: noname@example.com
+    AllowedPattern : "[^\\s@]+@[^\\s@]+\\.[^\\s@]+"
+
+Metadata: 
+  AWS::CloudFormation::Interface: 
+    ParameterGroups: 
+      - 
+        Label: 
+          default: "Resources Configuration"
+        Parameters: 
+          - pTerraformStateLockTableName
+      - 
+        Label: 
+          default: "Program Information"
+        Parameters: 
+          - pProgramName
+          - pEnvironmentName
+          - AccountEmail
+    ParameterLabels: 
+#      pVpcCIDR: 
+#        default: What is the CIDR of the VPC.
+      pTerraformStateLockTableName:
+        default: What is the name of the dynamodb table.
+      pProgramName:
+        default: What is the name of the program you are deploying for.
+      pEnvironmentName:
+        default: What is the name of the deployment environment.
+      AccountEmail:
+        default: What is the email of the account contact person.
+
+Resources:
+  rS3Bucket:
+    Type: 'AWS::S3::Bucket'
+    DeletionPolicy: Retain
+    Properties:
+      BucketName: !Sub ${pProgramName}-${pEnvironmentName}-${AWS::AccountId}-tfstate
+      AccessControl: Private
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+            BucketKeyEnabled: true
+
+  rTerraformStateLockDynamoDBTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Ref pTerraformStateLockTableName
+      AttributeDefinitions:
+        - AttributeName: LockID
+          AttributeType: S
+      KeySchema:
+        - AttributeName: LockID
+          KeyType: HASH
+      ProvisionedThroughput:
+        ReadCapacityUnits: 1
+        WriteCapacityUnits: 1
+      SSESpecification:
+        SSEEnabled: true
+      Tags:
+        - Key: EnvName
+          Value: !Sub ${pProgramName}-${pEnvironmentName}
+
+Outputs:
+  oBucketName:
+    Value: !Ref rS3Bucket
+    Description: Name of the Amazon S3 bucket for terraform state files.
+
+  oTerraformStateLockDynamoDBTable:
+    Value: !Ref rTerraformStateLockDynamoDBTable
+    Description: Name of the dynamodb table for terraform lock files.

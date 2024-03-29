@@ -42,6 +42,7 @@ resource "aws_security_group" "websg" {
   }
 
   tags = {
+    Name        = "${local.default_tag}-webservers-sg"
     Environment = var.EnvironmentName
   }
 }
@@ -56,14 +57,17 @@ resource "tls_private_key" "EC2Key-Private" {
   rsa_bits  = 4096
 }
 
-resource "aws_ssm_parameter" "WindowsKeySSM" {
-  name        = "/${var.EC2Name}/WindowsKeySSM"
-  description = "The SSM parameter storing the webserver key pair"
-  type        = "SecureString"
-  value       = tls_private_key.EC2Key-Private.private_key_pem
+resource "aws_secretsmanager_secret" "secret_key" {
+  name        = "${local.default_tag}-${lower(var.WindowsKey)}2"
+  description = "This is the key for ${var.OS} Admin PEM file"
   tags = {
     EnvName = "${local.default_tag}"
   }
+}
+
+resource "aws_secretsmanager_secret_version" "secret_key_value" {
+  secret_id     = aws_secretsmanager_secret.secret_key.id
+  secret_string = tls_private_key.EC2Key-Private.private_key_pem
 }
 
 resource "aws_instance" "webserver" {
@@ -75,7 +79,10 @@ resource "aws_instance" "webserver" {
   vpc_security_group_ids               = [aws_security_group.websg.id]
   iam_instance_profile                 = "${local.default_tag}-ssmpatchprofile"
   instance_initiated_shutdown_behavior = "terminate"
-  #Specify IMDSv2 as required
+  monitoring                           = true
+  metadata_options {
+    http_tokens = "required"
+  }
   root_block_device {
     volume_size           = var.Volume1
     volume_type           = "gp3"
@@ -92,20 +99,21 @@ resource "aws_instance" "webserver" {
   user_data = <<-EOF
 <powershell>
 Rename-Computer -NewName ${local.ec2_name} -Force -Restart
-#    $User = ${var.EC2LocalAdmins}
-#    $Password = ConvertTo-SecureString '${var.EC2Password}' -AsPlainText -Force
-#    $FullName = ${var.EC2LocalAdminsFullName}
-#    New-LocalUser $User -Password $Password -FullName $FullName -Description 'Local account for CIT POC Admins.' -AccountNeverExpires
-#    Add-LocalGroupMember -Group "Administrators" -Member $User
-#    Disable-LocalUser -Name "Administrator"
 Disable-LocalUser -Name "Guest"
 Set-TimeZone -Name 'Eastern Standard Time' -PassThru
 Install-WindowsFeature -name Web-Server -IncludeManagementTools
 Stop-Service -Name ShellHWDetection
-Get-Disk | Where PartitionStyle -eq 'raw' | Initialize-Disk -PartitionStyle MBR -PassThru | New-Partition -AssignDriveLetter -UseMaximumSize | Format-Volume -FileSystem NTFS -NewFileSystemLabel "Apps Drive" -Confirm:$false
+Get-Disk | Where-Object PartitionStyle -eq 'raw' | Initialize-Disk -PartitionStyle MBR -PassThru | New-Partition -AssignDriveLetter -UseMaximumSize | Format-Volume -FileSystem NTFS -NewFileSystemLabel "Apps Drive" -Confirm:$false
 Start-Service -Name ShellHWDetection
 </powershell>
 	EOF
+  #The file here should be in the powershell script  
+  #    $User = ${var.EC2LocalAdmins}
+  #    $Password = ConvertTo-SecureString '${var.EC2Password}' -AsPlainText -Force
+  #    $FullName = ${var.EC2LocalAdminsFullName}
+  #    New-LocalUser $User -Password $Password -FullName $FullName -Description 'Local account for CIT POC Admins.' -AccountNeverExpires
+  #    Add-LocalGroupMember -Group "Administrators" -Member $User
+  #    Disable-LocalUser -Name "Administrator" 
   tags = {
     Name    = "${local.ec2_name}"
     EnvName = var.EnvironmentName
