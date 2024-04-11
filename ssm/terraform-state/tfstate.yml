@@ -11,6 +11,7 @@ Parameters:
     Default: 'cit'
     AllowedValues:
       - 'cit'
+      - 'nimhd'
 
   pEnvironmentName:
     Type: String
@@ -19,6 +20,8 @@ Parameters:
     AllowedValues:
       - 'poc'
       - 'dev'
+      - 'stage'
+      - 'prod'
 
   pTerraformStateLockTableName:
     Type: String
@@ -47,8 +50,6 @@ Metadata:
           - pEnvironmentName
           - AccountEmail
     ParameterLabels: 
-#      pVpcCIDR: 
-#        default: What is the CIDR of the VPC.
       pTerraformStateLockTableName:
         default: What is the name of the dynamodb table.
       pProgramName:

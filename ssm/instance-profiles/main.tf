@@ -23,6 +23,16 @@ resource "aws_iam_role_policy_attachment" "ssmpolicy_attachment2" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonSSMMaintenanceWindowRole"
 }
 
+resource "aws_iam_role_policy_attachment" "cloudwatchpolicy_attachment1" {
+  role       = aws_iam_role.ssmpatch_role.name
+  policy_arn = "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy"
+}
+
+#Delete this role if parameter store access is not needed.
+resource "aws_iam_role_policy_attachment" "cloudwatchpolicy_attachment2" {
+  role       = aws_iam_role.ssmpatch_role.name
+  policy_arn = "arn:aws:iam::aws:policy/CloudWatchAgentAdminPolicy"
+}
 
 data "aws_iam_policy_document" "ssmpatchiam_policy" {
   statement {

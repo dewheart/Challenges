@@ -1,50 +1,6 @@
 locals {
-  account_id  = data.aws_caller_identity.current.account_id
   default_tag = "${var.ProgramName}-${var.EnvironmentName}"
   ec2_name    = "${upper(var.ProgramName)}${upper(var.EnvironmentName)}${upper(var.EC2Name)}"
-}
-
-resource "aws_security_group" "websg" {
-  name        = "${local.default_tag}-webservers-sg"
-  description = "Enable RDP, HTTP and HTTPS access."
-  vpc_id      = var.VpcIdentity
-
-  ingress {
-    description = "RDP Traffic From Administrators IP"
-    from_port   = 3389
-    to_port     = 3389
-    protocol    = "tcp"
-    cidr_blocks = var.MyIP
-  }
-
-  ingress {
-    description = "HTTP Traffic From Administrators IP"
-    from_port   = 80
-    to_port     = 80
-    protocol    = "tcp"
-    cidr_blocks = var.MyIP
-  }
-
-  egress {
-    description = "HTTP Traffic To Any IP"
-    from_port   = 80
-    to_port     = 80
-    protocol    = "tcp"
-    cidr_blocks = var.AnyIP
-  }
-
-  egress {
-    description = "HTTPS Traffic To Any IP"
-    from_port   = 443
-    to_port     = 443
-    protocol    = "tcp"
-    cidr_blocks = var.AnyIP
-  }
-
-  tags = {
-    Name        = "${local.default_tag}-webservers-sg"
-    Environment = var.EnvironmentName
-  }
 }
 
 resource "aws_key_pair" "EC2Key" {
@@ -58,7 +14,7 @@ resource "tls_private_key" "EC2Key-Private" {
 }
 
 resource "aws_secretsmanager_secret" "secret_key" {
-  name        = "${local.default_tag}-${lower(var.WindowsKey)}2"
+  name        = "${local.default_tag}-${lower(var.WindowsKey)}-secret"
   description = "This is the key for ${var.OS} Admin PEM file"
   tags = {
     EnvName = "${local.default_tag}"
@@ -75,8 +31,8 @@ resource "aws_instance" "webserver" {
   subnet_id                            = var.AppSubnet
   instance_type                        = var.InstanceType
   key_name                             = aws_key_pair.EC2Key.key_name
-  associate_public_ip_address          = true
-  vpc_security_group_ids               = [aws_security_group.websg.id]
+  associate_public_ip_address          = false
+  vpc_security_group_ids               = [var.AppSG]
   iam_instance_profile                 = "${local.default_tag}-ssmpatchprofile"
   instance_initiated_shutdown_behavior = "terminate"
   monitoring                           = true
@@ -117,6 +73,7 @@ Start-Service -Name ShellHWDetection
   tags = {
     Name    = "${local.ec2_name}"
     EnvName = var.EnvironmentName
+    PatchGroup = var.EnvironmentName
   }
 }
 

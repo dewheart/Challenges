@@ -9,3 +9,9 @@ variable "EnvironmentName" {
   type        = string
   default     = "poc"
 }
+
+variable "TeamEmail" {
+  description = "This is the email used for the sns subscription"
+  type        = string
+  default     = "adewunmi.ibironke@nih.gov"
+}
