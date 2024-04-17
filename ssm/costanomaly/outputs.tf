@@ -1,4 +1,9 @@
-output "patchS3bucket_arn" {
-  description = "This is the arn for the created S3 bucket"
-  value       = aws_s3_bucket.patchS3bucket.arn
+output "output_anomaly_monitor" {
+  description = "This is id of the anomaly monitor"
+  value       = aws_ce_anomaly_monitor.anomaly_monitor.id
+}
+
+output "output_anomaly_alert_subscription" {
+  description = "This is id of the anomaly alert subscription"
+  value       = aws_ce_anomaly_subscription.anomaly_alert_subscription.id
 }

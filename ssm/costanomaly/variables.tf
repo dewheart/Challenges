@@ -10,26 +10,38 @@ variable "EnvironmentName" {
   default     = "prod"
 }
 
+variable "AWSAccountName" {
+  description = "This is the name of the AWS account that cost anomaly is being set for"
+  type        = string
+  default     = "dewlearning"
+}
+
 variable "Email" {
-  description = "These are the email address that needs to be alerted"
+  description = "This is the email of Cloud Architecture Team that will be alerted"
   type        = string
   default     = "dewheart@outlook.com"
 }
 
+variable "CustomerEmail" {
+  description = "This is the email of the customer that will be alerted"
+  type        = string
+  default     = "tobawunmi@yahoo.com"
+}
+
 variable "LinkedAccounts" {
   description = "These are the linked accounts attached to the anomaly monitor"
-  type        = string
-  default     = ["956931812200"]
+  type        = list(string)
+  default     = ["956931812200", "063997147317"]
 }
 
 variable "Total_Impact_Absolute" {
   description = "This is the set amount to alert against, can be budget amount"
-  type        = number
+  type        = list(string)
   default     = ["100"]
 }
 
 variable "Total_Impact_Percentage" {
   description = "This is the percentage against true AWS spend"
-  type        = number
+  type        = list(string)
   default     = ["10"]
 }
