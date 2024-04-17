@@ -13,25 +13,25 @@ variable "EnvironmentName" {
 variable "AWSAccountName" {
   description = "This is the name of the AWS account that cost anomaly is being set for"
   type        = string
-  default     = "dewlearning"
+#  default     = ""
 }
 
 variable "Email" {
   description = "This is the email of Cloud Architecture Team that will be alerted"
   type        = string
-  default     = "dewheart@outlook.com"
+#  default     = ""
 }
 
 variable "CustomerEmail" {
   description = "This is the email of the customer that will be alerted"
   type        = string
-  default     = "tobawunmi@yahoo.com"
+#  default     = ""
 }
 
 variable "LinkedAccounts" {
   description = "These are the linked accounts attached to the anomaly monitor"
   type        = list(string)
-  default     = ["956931812200", "063997147317"]
+#  default     = [""]
 }
 
 variable "Total_Impact_Absolute" {
