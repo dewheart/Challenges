@@ -1,9 +1,3 @@
-locals {
-  account_id  = data.aws_caller_identity.current.account_id
-  default_tag = "${var.ProgramName}-${var.EnvironmentName}"
-  region      = data.aws_region.current.name
-}
-
 resource "aws_ce_anomaly_monitor" "anomaly_monitor" {
   name         = "${var.AWSAccountName}-AWSAnomalyMonitor"
   monitor_type = "CUSTOM"
