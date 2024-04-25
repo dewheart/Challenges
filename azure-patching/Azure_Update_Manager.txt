@@ -1,0 +1,89 @@
+Azure Update Manager
+
+Patching
+- Do it in a rolled out process
+  - Test System [Functional Testing, Load Testing in proportional to Prod]
+
+Azure Update Manager [Windows/Linux]
+
+Steps
+- Azure Resource Graph [No Automation Account, No Log Analytics, No Hybrid Runbook Worker]
+- Extension-Based [Easy for Azure-VM, added automatically]
+    - For non-Azure-Based [Be ARC enabled server OS]
+- Rich Scheduling
+- VM-Level RBAC
+
+For Azure VMs
+1. Set customer managed schedule [Set this under "Patch Orchestration"]
+Resource Type, Azure virtual machine [Azure VMs], Arc-enabled server [non-Azure VMs]
+
+For Patching [Steps]
+1. Assessment [Periodic Assessment]
+   Windows - Windows agent
+   Linux - Obtain from local or remote repo
+2. Use Policies
+   - Set assessment schedule [set periodic schedule]
+3. Check for updates [On-Demand, max of 100 machines]
+4. Reporting [Overview Page]
+5. Patching
+   - Schedule (Maintenance Configuration) - You can add offset period (like stage patch using tags etc)
+
+In machines, you can see the following
+- Name, Update Status (details of updates missing), OS, Resource type, Patch Orchestration, Periodic Assessment, Associated schedules, Status (VM deallocated, running or connected)
+
+
+True Setup
+
+From Azure Update Manager
+1. Schedule Updates [Choose] - 3000 max resources per schedule
+   - Subscription
+   - Resource Group
+   - Configuration name
+   - Region
+   - Maintenance scope (Guest-Azure VM, Arc-enabled VMs/servers)
+   - Reboot setting
+   - Add schedule
+  - Add dynamic Scope [Can be a resource group, OS, location or tag] - 1000 max resource per dynamic scope
+     - Add subscription
+  - Add Resource
+  - Add Updates [Critical/security etc]
+     - Include & Exclude KBs or packages
+2. One-time update [Can be used for zero-day updates]
+    - Add machines or select all
+    - Select specific updates
+3. Prescript & Postscript [Also good for managing gold images]
+   - Before and after the patching
+
+
+Pricing
+- Azure VM [Free]
+- ARC-Based [$5 per month per server. $0.16 per server per day]
+
+Second video tips
+-- Uses Azure VM Agent for manager
+   - Azure ARC Agents for servers outside Azure
+
+Azure policies to enable assessment on subscriptions
+  - Policy to configure remediation schedule.
+Step 1: Under Policy
+     1.1 Configure policy (for periodic assessments)
+         [Windows client OS not supported]
+          - Periodic checks take place every 24 hours
+     1.2 Schedule Updates [Maintenance Configuration]
+         - Offset (days after) - runs after number of days in original schedule.
+        - Add dynamic scope
+        - Add update classifications
+        - Include or exclude kb
+
+     2. Under policy
+     2.1 Scheduling recuring 
+         Terraform syntax, Hour,Day,Week,Month.
+  
+
+
+
+
+
+
+
+

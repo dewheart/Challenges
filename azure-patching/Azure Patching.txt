@@ -1,0 +1,57 @@
+Azure Patching
+- Azure Patch/Update Manager
+
+Steps
+1. Have an automation account
+   - Go to "Update management"
+     - For consistent control and compliances of VMs
+     - Requires Log Analytics workspace
+2. Log Analytics workspace
+
+In Update Management
+1. Schedule update management (Windows/Linux) -- Azure Update Manager [New Tool]
+Windows
+- Azure - Select Subscription or All
+        - Select Resource groups or All
+        - Select Location
+        - Select Tags
+  - All - OK
+- Machines to update
+- Include/Exclude KB
+- Update Classifications (e.g. Critical Updates, Security updates etc)
+- Schedule Settings [One time or recurring]
+- Add pre-scripts or post-scripts (optional)
+- maintenance window minutes
+- reboot options
+
+[Add VMs] - To show up in Update Management
+- Enable (Enable automation management on all the machines]
+   
+Solutions created under resource group
+- ChangeTracking
+- Updates
+
+Update Management Dashboard [Sort keys]
+- Machines [compliance, platform - if Azure, OS, missing updates, update agent readiness]  
+   - For agent readines, it uses "Hybrid Workers"
+- Missing updates
+- Deployment schedules
+- History
+
+Top Tab
+- Click "Manage machines" to enable all machines by default, even future ones or select specific ones.
+
+Logs - Click on machine to view the logs
+
+[You can add non-Azure machines as well.]
+
+Reporting
+- On the "Automation Account" overview page, you can see the total numbers of machines managed and if deployment is successful or if they are compliance.
+
+
+
+
+
+
+
+

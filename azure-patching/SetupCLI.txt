@@ -29,3 +29,10 @@ az network vnet subnet show -g cit-poc-rg -n cit-poc-public-subnet --vnet-name c
 
 Show resource group [az group list]
 az group show --name Test_Terraform_Create 
+
+No template for Azure Update Manager
+  - https://learn.microsoft.com/en-us/answers/questions/1434558/is-terraform-code-available-for-azure-update-manag
+No template for periodic assessment and dynamic scope
+  Dynamic Scope
+  - https://learn.microsoft.com/en-us/azure/templates/microsoft.maintenance/configurationassignments?pivots=deployment-language-terraform
+There is for maintenance configuration
