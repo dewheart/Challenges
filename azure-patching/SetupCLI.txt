@@ -1,0 +1,31 @@
+Install via PowerShell Admin
+
+$ProgressPreference = 'SilentlyContinue'; Invoke-WebRequest -Uri https://aka.ms/installazurecliwindows -OutFile .\AzureCLI.msi; Start-Process msiexec.exe -Wait -ArgumentList '/I AzureCLI.msi /quiet'; Remove-Item .\AzureCLI.msi
+
+Confirm
+az --version
+
+Connect to Azure
+az login
+
+For Azure Images
+az vm image list --offer WindowsServer --all --output table
+az vm image list-skus --location eastus2 --publisher MicrosoftWindowsServer --offer WindowsServer --output table
+
+Show images with specific SKUs only [Windows Server 2022]
+az vm image list --all --architecture x64 --location eastus2 --offer WindowsServer --publisher MicrosoftWindowsServer --sku 2022-Datacenter
+
+Resource Groups are always attached to a region [east us 2]
+
+Create Subscription
+Create Resource Group
+Create VNet
+Create Subnets
+
+Show Subnet
+az network vnet subnet show -g MyResourceGroup -n MySubnet --vnet-name MyVNet
+e.g.
+az network vnet subnet show -g cit-poc-rg -n cit-poc-public-subnet --vnet-name cit-poc-vnet
+
+Show resource group [az group list]
+az group show --name Test_Terraform_Create 
