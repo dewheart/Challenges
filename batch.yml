@@ -1,0 +1,292 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: This template is used to setup AWS Batch for Geocarb workflows.
+
+Parameters:
+
+  pProgramName:
+    Type: String
+    Description: Please choose the program you are building your services for.
+    Default: 'Geocarb'
+    AllowedValues:
+      - 'Geocarb'
+
+  pEnvironmentName:
+    Type: String
+    Description: Please choose the environment to build your services.
+    Default: 'Test'
+    AllowedValues:
+      - 'Test'
+      - 'Prod'
+
+  pAppName:
+    Type: String
+    Description: Please provide the application name as it should be used in joined lowercase.
+    Default: 'geocarbtest'
+    AllowedValues:
+      - 'geocarbtest'
+      - 'geocarbprod'
+
+  pPublicSubnet1:
+    Type: AWS::EC2::Subnet::Id
+    Description: Please select the first public subnet in the VPC.
+#    Default: ''.
+
+  pPublicSubnet2:
+    Type: AWS::EC2::Subnet::Id
+    Description: Please select the second public subnet in the VPC.
+#    Default: ''
+
+
+  pECSSecurityGroup:
+    Description: This is the id of the security group attached to ECS.
+    Type: AWS::EC2::SecurityGroup::Id
+ #   Default: 'sg-04ee8a39ec9d344a8'
+ #   AllowedValues:
+ #     - 'sg-04ee8a39ec9d344a8'
+
+  pvCPU:
+    Type: String
+    Description: Please provide the size of the virtual CPU.
+    Default: '1'
+    AllowedValues:
+      - '1'
+      - '2'
+      - '3'
+      - '4'
+
+  pMemory:
+    Type: String
+    Description: Please provide the size of the memory.
+    Default: '3072'
+    AllowedValues:
+      - '2048'
+      - '3072'
+      - '4096'
+      - '5120'   
+
+  pImage:
+    Type: String
+    Description: Please specify the arn of the ECR image.
+    Default: '975050080768.dkr.ecr.us-east-1.amazonaws.com/gdoc-l2fp:v3.0'
+
+  pfileSystemId:
+    Description: The id of the EFS mappings. (ending 53f6 for test, ending b43c for prod)
+    Type: String
+    Default: 'fs-063552139e3af53f6'
+    AllowedValues:
+      - 'fs-063552139e3af53f6'
+
+  pJobNumber:
+    Type: String
+    Description: This is the job number.
+
+  pAccountEmail:
+    Description: Email of the person to contact with question for this account.
+    Type: String
+    Default: noname@example.com
+    AllowedPattern : "[^\\s@]+@[^\\s@]+\\.[^\\s@]+"
+
+Metadata: 
+  AWS::CloudFormation::Interface: 
+    ParameterGroups: 
+
+      - 
+        Label: 
+          default: "Program Information"
+        Parameters: 
+          - pProgramName
+          - pEnvironmentName
+          - AccountEmail
+
+      -
+        Label:
+          default: "Network Information"
+        Parameters:
+          - pAppName
+          - pPublicSubnet1
+          - pPublicSubnet2
+          - pECSSecurityGroup
+          - pImage
+          - pfileSystemId
+          - pvCPU
+          - pMemory
+          - pJobNumber
+
+    ParameterLabels: 
+      pProgramName:
+        default: What is the name of the program you are deploying for.
+      pEnvironmentName:
+        default: What is the name of the deployment environment.
+      pAppName:
+        default: What is the name of the application as a single lowercase word.
+      pPublicSubnet1:
+        default: What is the name of the first subnet.
+      pPublicSubnet2:
+        default: What is the name of the second subnet.
+      pECSSecurityGroup:
+        default: What is the security group that allows ECS and EFS access.
+      pImage:
+        default: What is the arn of the ECR image.
+      pfileSystemId:
+        default: This is the id of the file system.
+      pvCPU:
+        default: This is the number of vCPU assigned in GB.
+      pMemory:
+        default: This is the number of memory assigned in MB.
+      pJobNumber:
+        default: This is the job number.
+      pAccountEmail:
+        default: What is the email of the account contact person.
+
+Resources:
+  rBatchExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      Description: This is the role used to build AWS Batch services on your behalf.
+      RoleName: !Sub ${pProgramName}-${pEnvironmentName}-batch-role
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: 
+                - batch.amazonaws.com
+            Action: 
+              - 'sts:AssumeRole'
+      Path: /
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSBatchServiceRole
+
+  rECSTaskExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      Description: This is the role used to build AWS Batch using ECS Fargate on your behalf.
+      RoleName: !Sub ${pProgramName}-${pEnvironmentName}-ecs-role
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: 
+                - ecs-tasks.amazonaws.com
+            Action: 
+              - 'sts:AssumeRole'
+      Path: /
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+        - arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryFullAccess
+        - arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy
+        - arn:aws:iam::aws:policy/AmazonECS_FullAccess
+
+  pEventRuleRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub ${pProgramName}-${pEnvironmentName}-batchevent-role
+      AssumeRolePolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - events.amazonaws.com
+            Action: 
+              - sts:AssumeRole
+      Path: /
+      Policies:
+        - PolicyName: !Sub ${pProgramName}-${pEnvironmentName}-eventrule-policy
+          PolicyDocument:
+            Statement:
+              - Effect: Allow
+                Action:
+                  - batch:SubmitJob
+                Resource: '*'
+
+  rECSComputeEnvironment:
+    Type: AWS::Batch::ComputeEnvironment
+    Properties:
+      ComputeEnvironmentName: !Sub ${pProgramName}-${pEnvironmentName}-compenv
+      ServiceRole: !Ref rBatchExecutionRole
+      Type: MANAGED
+      ComputeResources: 
+        Type: FARGATE
+        MaxvCpus: 10
+        Subnets:
+        - !Ref pPublicSubnet1
+        - !Ref pPublicSubnet2
+        SecurityGroupIds:
+        - !Ref pECSSecurityGroup
+      Tags: 
+        Environment: !Sub ${pEnvironmentName}
+
+  rECSJobQueue:
+    Type: AWS::Batch::JobQueue
+    Properties:
+      JobQueueName: !Sub ${pProgramName}-${pEnvironmentName}-jobqueue
+      ComputeEnvironmentOrder:
+        - ComputeEnvironment: !Ref rECSComputeEnvironment
+          Order: 1
+      Priority: 99
+      State: ENABLED
+      Tags: 
+        Environment: !Sub ${pEnvironmentName}
+
+  rECSJobDefinition:
+    Type: 'AWS::Batch::JobDefinition'
+    Properties:
+      JobDefinitionName: !Sub ${pProgramName}-${pEnvironmentName}-jobdefinition
+      Type: container
+      PropagateTags: true
+      PlatformCapabilities:
+        - FARGATE
+      ContainerProperties:
+        FargatePlatformConfiguration:
+          PlatformVersion: 1.4.0
+        RuntimePlatform: 
+          CpuArchitecture: X86_64
+          OperatingSystemFamily: LINUX
+        ExecutionRoleArn: !GetAtt rBatchExecutionRole.Arn
+        JobRoleArn: !GetAtt rECSTaskExecutionRole.Arn
+        Image: !Ref pImage
+        MountPoints:
+          - ReadOnly: false
+            SourceVolume: gdoc
+            ContainerPath: /mnt
+        LogConfiguration:
+          LogDriver:  awslogs
+          Options:
+            awslogs-group: !Ref rBatchLogGroup
+            awslogs-region: !Ref AWS::Region
+            awslogs-stream-prefix: ecs # !Sub ${pAppName}-logs
+        Volumes:
+          - Name: gdoc
+            EfsVolumeConfiguration:
+              FileSystemId: !Ref pfileSystemId
+              RootDirectory: /l2fp
+#        ReadonlyRootFilesystem: true
+        ResourceRequirements:
+          - Type: MEMORY
+            Value: !Ref pMemory
+          - Type: VCPU
+            Value: !Ref pvCPU
+      Tags:
+        Environment: !Sub ${pEnvironmentName}
+
+  rBatchLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties: 
+      LogGroupName: !Sub /ecs/${pAppName}-logs
+      RetentionInDays: 30
+
+  rJobScheduledRule:
+    Type: AWS::Events::Rule
+    Properties:
+        Name: !Sub ${pProgramName}-${pEnvironmentName}-batchevent-rule
+        Description: Trigger job every 15 mins.
+        ScheduleExpression: 'cron(0/15 * * * ? *)'
+        Targets:
+        - Id: JobScheduler1
+          Arn: !Ref rECSJobQueue
+          RoleArn: !GetAtt pEventRuleRole.Arn
+          BatchParameters:
+            JobDefinition: !Ref rECSJobDefinition
+            JobName: !Sub ${pAppName}-job-${pJobNumber}
+
