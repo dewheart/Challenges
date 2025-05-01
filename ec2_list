@@ -1,0 +1,49 @@
+#!/bin/bash
+
+AGGREGATOR_NAME="my-org-aggregator"
+ROLE_NAME="OrganizationAccountAccessRole"
+CSV_FILE="ec2_instance_details.csv"
+
+# Header for CSV
+echo "AccountId,Region,InstanceId,InstanceType,State,NameTag" > $CSV_FILE
+
+# Step 1: Get EC2 resource identifiers from Config Aggregator
+aws configservice list-aggregate-discovered-resources \
+  --configuration-aggregator-name $AGGREGATOR_NAME \
+  --resource-type AWS::EC2::Instance \
+  --query "ResourceIdentifiers[*].[SourceAccountId,ResourceId,Region]" \
+  --output text > ec2_instances_raw.txt
+
+# Step 2: Loop through each line and get instance details
+while read -r account_id instance_id region; do
+  echo "Processing $instance_id in $account_id/$region"
+
+  # Assume role in target account
+  CREDS=$(aws sts assume-role \
+    --role-arn arn:aws:iam::$account_id:role/$ROLE_NAME \
+    --role-session-name EC2ExportSession \
+    --query 'Credentials' \
+    --output json)
+
+  export AWS_ACCESS_KEY_ID=$(echo $CREDS | jq -r .AccessKeyId)
+  export AWS_SECRET_ACCESS_KEY=$(echo $CREDS | jq -r .SecretAccessKey)
+  export AWS_SESSION_TOKEN=$(echo $CREDS | jq -r .SessionToken)
+
+  # Get instance details
+  DETAILS=$(aws ec2 describe-instances \
+    --instance-ids $instance_id \
+    --region $region \
+    --query "Reservations[].Instances[]" \
+    --output json)
+
+  # Extract fields
+  instance_type=$(echo "$DETAILS" | jq -r '.[0].InstanceType')
+  state=$(echo "$DETAILS" | jq -r '.[0].State.Name')
+  name_tag=$(echo "$DETAILS" | jq -r '.[0].Tags[]? | select(.Key=="Name") | .Value' || echo "N/A")
+
+  # Append to CSV
+  echo "$account_id,$region,$instance_id,$instance_type,$state,\"$name_tag\"" >> $CSV_FILE
+
+done < ec2_instances_raw.txt
+
+echo "Export completed: $CSV_FILE"
