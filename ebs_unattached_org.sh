@@ -1,58 +1,64 @@
 #!/bin/bash
 
-ROLE_NAME="OrganizationAccountAccessRole"
-REGION="us-east-1"
-TIMESTAMP=$(date +"%Y%m%d-%H%M%S")
-CSV_FILE="unused_ebs_volumes_$TIMESTAMP.csv"
+# Get the management account ID using describe-organization
+management_account=$(aws organizations describe-organization --query "Organization.MasterAccountId" --output text)
 
-# Auto-detect management account ID
-MANAGEMENT_ACCOUNT_ID=$(aws organizations describe-organization \
-  --query 'Organization.MasterAccountId' --output text)
+# Get all AWS account details (ID and Name) in the organization, excluding the management account
+account_details=$(aws organizations list-accounts --query "Accounts[?Id!='${management_account}'].{ID:Id,Name:Name}" --output json)
 
-echo "Detected management account ID: $MANAGEMENT_ACCOUNT_ID"
+# Generate a timestamp for the CSV file
+timestamp=$(date +"%Y-%m-%d_%H-%M-%S")
 
-# Create header in CSV
-echo "AccountID,AccountName,VolumeID,Size(GB),AvailabilityZone,CreateTime" > "$CSV_FILE"
+# Define the output CSV file name
+output_file="unused_volumes_${timestamp}.csv"
 
-# Create associative array AccountID -> AccountName
-declare -A ACCOUNT_MAP
+# Create the CSV header
+echo "AccountID,AccountName,VolumeID,Size(GB),AvailabilityZone" > "$output_file"
 
-while read -r id name; do
-  ACCOUNT_MAP["$id"]="$name"
-done < <(aws organizations list-accounts \
-  --query "Accounts[?Id!='${MANAGEMENT_ACCOUNT_ID}'].[Id,Name]" \
-  --output text)
+# Iterate over each account and assume role to describe volumes
+for row in $(echo "$account_details" | jq -r '.[] | @base64'); do
+  # Decode each account's details
+  _jq() {
+    echo ${row} | base64 --decode | jq -r ${1}
+  }
 
-# Loop through accounts
-for ACCOUNT_ID in "${!ACCOUNT_MAP[@]}"; do
-  ACCOUNT_NAME="${ACCOUNT_MAP[$ACCOUNT_ID]}"
-  echo "Checking account: $ACCOUNT_NAME ($ACCOUNT_ID)"
+  # Get the account ID and account name
+  account_id=$(_jq '.ID')
+  account_name=$(_jq '.Name')
 
-  # Assume role
-  CREDS=$(aws sts assume-role \
-    --role-arn arn:aws:iam::${ACCOUNT_ID}:role/${ROLE_NAME} \
-    --role-session-name "CheckUnusedVolumesSession")
+  echo "Assuming role in account $account_name ($account_id)"
 
-  export AWS_ACCESS_KEY_ID=$(echo $CREDS | jq -r '.Credentials.AccessKeyId')
-  export AWS_SECRET_ACCESS_KEY=$(echo $CREDS | jq -r '.Credentials.SecretAccessKey')
-  export AWS_SESSION_TOKEN=$(echo $CREDS | jq -r '.Credentials.SessionToken')
+  # Assume role in the member account using AWSControlTowerExecution
+  role_arn="arn:aws:iam::${account_id}:role/AWSControlTowerExecution"
+  credentials=$(aws sts assume-role --role-arn "$role_arn" --role-session-name DescribeVolumesSession)
 
-  # Get unused volumes
-  VOLUMES=$(aws ec2 describe-volumes \
-    --region "$REGION" \
-    --filters Name=status,Values=available \
-    --query "Volumes[*].[VolumeId,Size,AvailabilityZone,CreateTime]" \
-    --output text)
+  # Extract temporary credentials from the assumed role response
+  access_key=$(echo $credentials | jq -r .Credentials.AccessKeyId)
+  secret_key=$(echo $credentials | jq -r .Credentials.SecretAccessKey)
+  session_token=$(echo $credentials | jq -r .Credentials.SessionToken)
 
-  while read -r vol_id size az ctime; do
-    echo "$ACCOUNT_ID,\"$ACCOUNT_NAME\",$vol_id,$size,$az,$ctime" >> "$CSV_FILE"
-  done <<< "$VOLUMES"
+  # Set temporary AWS credentials
+  export AWS_ACCESS_KEY_ID=$access_key
+  export AWS_SECRET_ACCESS_KEY=$secret_key
+  export AWS_SESSION_TOKEN=$session_token
 
-  echo "Done with $ACCOUNT_NAME"
-  echo "-----------------------------"
+  # Run the describe-volumes command to find unattached volumes
+  echo "Describing unattached volumes in account $account_name ($account_id)"
+  volumes=$(aws ec2 describe-volumes --filters Name=status,Values=available --query "Volumes[*].{ID:VolumeId,Size:Size,AZ:AvailabilityZone}" --output text)
+
+  # Loop through volumes and append to the CSV file
+  while read -r volume; do
+    # Parse the output and format as CSV
+    volume_id=$(echo "$volume" | awk '{print $1}')
+    size=$(echo "$volume" | awk '{print $2}')
+    az=$(echo "$volume" | awk '{print $3}')
+    
+    # Append the volume information to the CSV file
+    echo "$account_id,$account_name,$volume_id,$size,$az" >> "$output_file"
+  done <<< "$volumes"
+
+  # Unset AWS credentials to avoid conflicts
+  unset AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN
 done
 
-# Clean up
-unset AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN
-
-echo "✅ Results saved to: $CSV_FILE"
+echo "CSV export completed: $output_file"
