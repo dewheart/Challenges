@@ -1,0 +1,20 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Parameter with constraint for web URL format
+
+Parameters:
+  WebAddress:
+    Type: String
+    Description: Enter a valid web URL (must start with http:// or https://)
+    AllowedPattern: '^https?://[a-zA-Z0-9.-]+(\.[a-zA-Z]{2,})?(:[0-9]+)?(/.*)?$'
+    ConstraintDescription: Must be a valid URL starting with http:// or https://
+
+Resources:
+  MyExampleBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "web-${AWS::StackName}"
+
+Outputs:
+  SubmittedWebAddress:
+    Description: The validated web address you provided
+    Value: !Ref WebAddress
