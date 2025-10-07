@@ -1,17 +1,12 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Description: >
-  Control Tower–compliant AWS Config aggregator and rule to collect WorkSpaces user data across Organization accounts.
+  Control Tower–compliant AWS Config aggregator and rule to inventory AWS WorkSpaces users across all Organization accounts.
 
 Parameters:
   ConfigAggregatorName:
     Type: String
     Default: OrgWideWorkSpacesAggregator
     Description: Name for the AWS Config aggregator.
-
-  OrgRoleName:
-    Type: String
-    Default: AWSControlTowerStackSetRole
-    Description: Role name to assume for organization-level aggregation (must exist in member accounts).
 
 Resources:
   ConfigAggregatorRole:
@@ -46,14 +41,22 @@ Resources:
         RoleArn: !GetAtt ConfigAggregatorRole.Arn
         AllAwsRegions: true
 
-  WorkSpacesConfigRule:
+  WorkSpacesInventoryRule:
     Type: AWS::Config::ConfigRule
     Properties:
       ConfigRuleName: WorkSpacesInventoryRule
-      Description: Collects AWS WorkSpaces configuration data, including user associations.
+      Description: >
+        Custom AWS Config rule to ensure AWS WorkSpaces are tracked across the organization.
+        This does not alter Control Tower's configuration and allows inventory of WorkSpaces user data.
       Source:
-        Owner: AWS
-        SourceIdentifier: WORKSPACES_WORKSPACES
+        Owner: CUSTOM_POLICY
+        CustomPolicyDetails:
+          EnableDebugLogDelivery: false
+          PolicyRuntime: guard-2.x.x
+          PolicyText: |
+            rule check_workspaces_recorded when resourceType == "AWS::WorkSpaces::Workspace" {
+              %recordExists
+            }
       Scope:
         ComplianceResourceTypes:
           - AWS::WorkSpaces::Workspace
