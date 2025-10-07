@@ -1,0 +1,68 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  Control Tower–compliant AWS Config aggregator and rule to collect WorkSpaces user data across Organization accounts.
+
+Parameters:
+  ConfigAggregatorName:
+    Type: String
+    Default: OrgWideWorkSpacesAggregator
+    Description: Name for the AWS Config aggregator.
+
+  OrgRoleName:
+    Type: String
+    Default: AWSControlTowerStackSetRole
+    Description: Role name to assume for organization-level aggregation (must exist in member accounts).
+
+Resources:
+  ConfigAggregatorRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: ConfigAggregatorCustomRole
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: config.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSConfigRoleForOrganizations
+      Policies:
+        - PolicyName: AllowConfigAggregatorAccess
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - organizations:ListAccounts
+                  - organizations:DescribeOrganization
+                Resource: "*"
+
+  ConfigAggregator:
+    Type: AWS::Config::ConfigurationAggregator
+    Properties:
+      ConfigurationAggregatorName: !Ref ConfigAggregatorName
+      OrganizationAggregationSource:
+        RoleArn: !GetAtt ConfigAggregatorRole.Arn
+        AllAwsRegions: true
+
+  WorkSpacesConfigRule:
+    Type: AWS::Config::ConfigRule
+    Properties:
+      ConfigRuleName: WorkSpacesInventoryRule
+      Description: Collects AWS WorkSpaces configuration data, including user associations.
+      Source:
+        Owner: AWS
+        SourceIdentifier: WORKSPACES_WORKSPACES
+      Scope:
+        ComplianceResourceTypes:
+          - AWS::WorkSpaces::Workspace
+
+Outputs:
+  AggregatorName:
+    Description: The name of the organization-wide AWS Config aggregator.
+    Value: !Ref ConfigAggregator
+
+  AggregatorRoleArn:
+    Description: IAM Role ARN used by the Config aggregator.
+    Value: !GetAtt ConfigAggregatorRole.Arn
